@@ -1,0 +1,9 @@
+{
+  "name": "wildcam-gorongosa-explorer",
+  "private": true,
+  "scripts": {
+    "build:data": "node scripts/build-data.mjs",
+    "build": "npm run build:data",
+    "check": "node --check dist/app.js && test -f dist/index.html && test -f dist/data.json"
+  }
+}

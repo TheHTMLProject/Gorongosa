@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A fast explorer for WildCam Gorongosa camera-trap observations.">
+  <title>WildCam Gorongosa Lab | Explore Data</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231e492e'/%3E%3Cpath d='M32 12c-8 11-17 19-17 29a17 17 0 0 0 34 0c0-10-9-18-17-29Z' fill='%2397deb0'/%3E%3Ccircle cx='32' cy='39' r='6' fill='%231e492e'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="WildCam Gorongosa Lab home"><span class="brand-mark">W</span><span>WildCam<br><b>Gorongosa Lab</b></span></a>
+    <nav aria-label="Primary navigation"><a href="#top">Student Home</a><a href="#explore" aria-current="page">Explore Data</a><a href="#about">Ecology</a></nav>
+  </header>
+  <main id="top">
+    <section class="intro" id="about"><div><p class="eyebrow">Zooniverse Classrooms</p><h1>Explore the WildCam Gorongosa data</h1><p>Find camera-trap observations by animal, habitat, season, and time of day.</p></div><div class="intro-stat"><strong id="totalCount">40,302</strong><span>photo observations</span></div></section>
+    <section class="workspace" id="explore" aria-label="WildCam data explorer">
+      <aside class="filters" aria-label="Filters">
+        <div class="filter-heading"><div><p class="eyebrow">Explore data</p><h2>Filters</h2></div><button id="clearFilters" class="text-button" type="button">Clear all</button></div>
+        <label class="search"><span class="sr-only">Search species</span><input id="speciesSearch" type="search" placeholder="Search species"></label>
+        <details open><summary>Species <span id="speciesCount"></span></summary><div id="speciesFilters" class="options"></div></details>
+        <details open><summary>Habitats <span id="habitatCount"></span></summary><div id="habitatFilters" class="options"></div></details>
+        <details open><summary>Seasons <span id="seasonCount"></span></summary><div id="seasonFilters" class="options"></div></details>
+        <details open><summary>Times of Day <span id="timeCount"></span></summary><div id="timeFilters" class="options"></div></details>
+      </aside>
+      <div class="results">
+        <div class="result-toolbar"><div><strong id="resultCount">Loading observations…</strong><span id="activeSummary">Preparing the data</span></div><button id="download" class="download" type="button" disabled>Download CSV</button></div>
+        <section class="map-card" aria-label="Observation map"><div class="map-labels"><span>Gorongosa National Park</span><span>Each point represents one or more observations</span></div><canvas id="map" width="1200" height="540" aria-label="Map of filtered camera-trap observations"></canvas><div class="legend"><i></i> filtered observations <span id="pointCount"></span></div></section>
+        <section class="records" aria-labelledby="recordHeading"><div class="records-heading"><h2 id="recordHeading">Sample observations</h2><span id="recordNote">Showing the first 80 matches</span></div><div class="table-wrap"><table><thead><tr><th>Species</th><th>Camera</th><th>Habitat</th><th>Season</th><th>Time</th><th>Photo</th></tr></thead><tbody id="tableRows"></tbody></table></div></section>
+      </div>
+    </section>
+  </main>
+  <template id="optionTemplate"><label class="option"><input type="checkbox"><span></span><small></small></label></template>
+  <script src="app.js" defer></script>
+</body>
+</html>
