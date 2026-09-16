@@ -40,6 +40,7 @@ function filteredRows() {
 function drawMap(matches) {
   const canvas = $('map');
   const context = canvas.getContext('2d');
+  if (!context) return;
   context.fillStyle = '#edf3e6';
   context.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -147,19 +148,32 @@ $('clearFilters').addEventListener('click', () => {
 $('download').addEventListener('click', download);
 
 loadMapTiles();
-fetch('data.json').then((response) => {
-  if (!response.ok) throw new Error(`Data request failed: ${response.status}`);
-  return response.json();
-}).then((data) => {
-  rows = data.rows;
-  for (const { id, index } of groups) {
-    const counts = new Map();
-    for (const row of rows) if (row[index]) counts.set(row[index], (counts.get(row[index]) || 0) + 1);
-    optionCounts[id] = [...counts].sort(([a], [b]) => a.localeCompare(b));
+async function loadObservations() {
+  let data;
+  try {
+    const response = await fetch('data.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    data = await response.json();
+  } catch (error) {
+    console.error('Could not load observations', error);
+    $('resultCount').textContent = 'Could not load observations';
+    $('activeSummary').textContent = 'The data request failed. Refresh the page to try again.';
+    return;
   }
-  renderOptions();
-  render();
-}).catch(() => {
-  $('resultCount').textContent = 'Could not load observations';
-  $('activeSummary').textContent = 'Check that data.json is available.';
-});
+
+  try {
+    rows = data.rows;
+    for (const { id, index } of groups) {
+      const counts = new Map();
+      for (const row of rows) if (row[index]) counts.set(row[index], (counts.get(row[index]) || 0) + 1);
+      optionCounts[id] = [...counts].sort(([a], [b]) => a.localeCompare(b));
+    }
+    renderOptions();
+    render();
+  } catch (error) {
+    console.error('Could not display observations', error);
+    $('resultCount').textContent = 'Could not display observations';
+    $('activeSummary').textContent = error.message;
+  }
+}
+loadObservations();
