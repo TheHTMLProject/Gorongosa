@@ -5,30 +5,31 @@ const groups = [
   { id: 'time', index: 6, host: 'timeFilters', count: 'timeCount' }
 ];
 const selected = Object.fromEntries(groups.map(({ id }) => [id, new Set()]));
+const optionCounts = {};
+const tiles = [];
 let rows = [];
+let lastMatches = [];
 
 const $ = (id) => document.getElementById(id);
 const plural = (number, noun) => `${number.toLocaleString()} ${noun}${number === 1 ? '' : 's'}`;
 
-function valuesFor(index) {
-  return [...new Map(rows.map((row) => [row[index], 0])).keys()].filter(Boolean).sort((a, b) => a.localeCompare(b));
-}
-
 function renderOptions() {
   const query = $('speciesSearch').value.trim().toLowerCase();
-  groups.forEach((group) => {
-    const host = $(group.host); host.replaceChildren();
-    const values = valuesFor(group.index).filter((value) => group.id !== 'species' || value.toLowerCase().includes(query));
-    values.forEach((value) => {
+  groups.forEach(({ id, host, count }) => {
+    const container = $(host);
+    container.replaceChildren();
+    for (const [value, total] of optionCounts[id]) {
+      if (id === 'species' && !value.toLowerCase().includes(query)) continue;
       const label = $('optionTemplate').content.firstElementChild.cloneNode(true);
       const input = label.querySelector('input');
-      input.checked = selected[group.id].has(value);
-      input.dataset.group = group.id; input.value = value;
+      input.checked = selected[id].has(value);
+      input.dataset.group = id;
+      input.value = value;
       label.querySelector('span').textContent = value;
-      label.querySelector('small').textContent = rows.filter((row) => row[group.index] === value).length.toLocaleString();
-      host.append(label);
-    });
-    $(group.count).textContent = selected[group.id].size ? selected[group.id].size : '';
+      label.querySelector('small').textContent = total.toLocaleString();
+      container.append(label);
+    }
+    $(count).textContent = selected[id].size || '';
   });
 }
 
@@ -37,50 +38,128 @@ function filteredRows() {
 }
 
 function drawMap(matches) {
-  const canvas = $('map'); const context = canvas.getContext('2d');
-  const width = canvas.width; const height = canvas.height;
-  context.clearRect(0, 0, width, height);
-  context.fillStyle = '#dce7d7'; context.fillRect(0, 0, width, height);
-  context.strokeStyle = '#c4d6be'; context.lineWidth = 2;
-  for (let x = -100; x < width + 150; x += 155) { context.beginPath(); context.moveTo(x, 0); context.bezierCurveTo(x + 80, height * .25, x - 45, height * .75, x + 95, height); context.stroke(); }
-  context.fillStyle = '#92b68d'; context.globalAlpha = .55; context.beginPath(); context.ellipse(width * .48, height * .52, width * .38, height * .24, -.2, 0, Math.PI * 2); context.fill();
-  const limit = 2200; const step = Math.max(1, Math.ceil(matches.length / limit));
-  context.fillStyle = '#c35335'; context.globalAlpha = .48;
-  for (let i = 0; i < matches.length; i += step) {
-    const row = matches[i], lng = Number(row[2]), lat = Number(row[3]);
-    const x = ((lng - 34.15) / .55) * width, y = ((-lat - 18.65) / .48) * height;
-    if (x >= 0 && x <= width && y >= 0 && y <= height) { context.beginPath(); context.arc(x, y, 2.1, 0, Math.PI * 2); context.fill(); }
+  const canvas = $('map');
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#edf3e6';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (const { image, column, row } of tiles) {
+    if (image.complete && image.naturalWidth) context.drawImage(image, column * 256 - 153, row * 256 - 391, 256, 256);
   }
-  context.globalAlpha = 1; $('pointCount').textContent = `sampled ${Math.min(matches.length, limit).toLocaleString()}`;
+
+  const locations = new Map();
+  for (const row of matches) {
+    const key = `${row[2]},${row[3]}`;
+    locations.set(key, (locations.get(key) || 0) + 1);
+  }
+  const worldSize = 256 * 2 ** 11;
+  context.lineWidth = 1.5;
+  for (const [location, count] of locations) {
+    const [longitude, latitude] = location.split(',').map(Number);
+    const radians = latitude * Math.PI / 180;
+    const x = ((longitude + 180) / 360) * worldSize - 1218 * 256 - 153;
+    const y = ((1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) / 2) * worldSize - 1131 * 256 - 391;
+    if (x < -10 || x > canvas.width + 10 || y < -10 || y > canvas.height + 10) continue;
+    context.beginPath();
+    context.arc(x, y, Math.min(9, 3 + Math.log1p(count) * .7), 0, Math.PI * 2);
+    context.fillStyle = 'rgba(255, 204, 51, .85)';
+    context.fill();
+    context.strokeStyle = '#fff';
+    context.stroke();
+  }
+  $('pointCount').textContent = locations.size.toLocaleString();
 }
 
 function renderTable(matches) {
-  const body = $('tableRows'); body.replaceChildren();
-  matches.slice(0, 80).forEach((row) => {
+  const body = $('tableRows');
+  body.replaceChildren();
+  for (const row of matches.slice(0, 80)) {
     const tr = document.createElement('tr');
-    [row[8], row[1], row[7], row[5], row[6]].forEach((value) => { const td = document.createElement('td'); td.textContent = value; tr.append(td); });
-    const photo = document.createElement('td'); const link = document.createElement('a'); link.href = row[10]; link.target = '_blank'; link.rel = 'noreferrer'; link.textContent = 'View photo'; photo.append(link); tr.append(photo); body.append(tr);
-  });
+    for (const value of [row[8], row[1], row[7], row[5], row[6]]) {
+      const cell = document.createElement('td');
+      cell.textContent = value;
+      tr.append(cell);
+    }
+    const photo = document.createElement('td');
+    const link = document.createElement('a');
+    link.href = row[10];
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'View photo';
+    photo.append(link);
+    tr.append(photo);
+    body.append(tr);
+  }
   $('recordNote').textContent = matches.length > 80 ? 'Showing the first 80 matches' : `Showing all ${matches.length.toLocaleString()} matches`;
 }
 
 function render() {
-  const matches = filteredRows();
-  $('resultCount').textContent = plural(matches.length, 'photo');
+  lastMatches = filteredRows();
+  $('resultCount').textContent = plural(lastMatches.length, 'photo');
   const active = groups.flatMap(({ id }) => [...selected[id]]);
   $('activeSummary').textContent = active.length ? active.join(' · ') : 'All observations';
-  drawMap(matches); renderTable(matches); $('download').disabled = false;
+  drawMap(lastMatches);
+  renderTable(lastMatches);
+  $('download').disabled = false;
 }
 
 function download() {
-  const head = ['image_id', 'camera', 'longitude', 'latitude', 'date', 'season', 'time_period', 'veg_type', 'species', 'species_count', 'image_url'];
-  const csv = [head, ...filteredRows()].map((line) => line.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\n');
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); const a = document.createElement('a'); a.href = url; a.download = 'wildcam-gorongosa-filtered.csv'; a.click(); URL.revokeObjectURL(url);
+  const header = ['image_id', 'camera', 'longitude', 'latitude', 'date', 'season', 'time_period', 'veg_type', 'species', 'species_count', 'image_url'];
+  const csv = [header, ...lastMatches].map((line) => line.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'wildcam-gorongosa-filtered.csv';
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-document.addEventListener('change', (event) => { if (!event.target.matches('.option input')) return; const { group } = event.target.dataset; event.target.checked ? selected[group].add(event.target.value) : selected[group].delete(event.target.value); renderOptions(); render(); });
+function loadMapTiles() {
+  const pending = [];
+  for (let column = 0; column < 6; column += 1) {
+    for (let row = 0; row < 4; row += 1) {
+      const image = new Image();
+      tiles.push({ image, column, row });
+      pending.push(new Promise((resolve) => {
+        image.onload = resolve;
+        image.onerror = resolve;
+      }));
+      image.src = `assets/map/tile-${column}-${row}.jpg`;
+    }
+  }
+  Promise.all(pending).then(() => drawMap(lastMatches));
+}
+
+document.addEventListener('change', (event) => {
+  if (!event.target.matches('.option input')) return;
+  const { group } = event.target.dataset;
+  event.target.checked ? selected[group].add(event.target.value) : selected[group].delete(event.target.value);
+  renderOptions();
+  render();
+});
 $('speciesSearch').addEventListener('input', renderOptions);
-$('clearFilters').addEventListener('click', () => { groups.forEach(({ id }) => selected[id].clear()); $('speciesSearch').value = ''; renderOptions(); render(); });
+$('clearFilters').addEventListener('click', () => {
+  groups.forEach(({ id }) => selected[id].clear());
+  $('speciesSearch').value = '';
+  renderOptions();
+  render();
+});
 $('download').addEventListener('click', download);
 
-fetch('data.json').then((response) => response.json()).then((data) => { rows = data.rows; $('totalCount').textContent = rows.length.toLocaleString(); renderOptions(); render(); }).catch(() => { $('resultCount').textContent = 'Could not load observations'; $('activeSummary').textContent = 'Check that data.json is available.'; });
+loadMapTiles();
+fetch('data.json').then((response) => {
+  if (!response.ok) throw new Error(`Data request failed: ${response.status}`);
+  return response.json();
+}).then((data) => {
+  rows = data.rows;
+  for (const { id, index } of groups) {
+    const counts = new Map();
+    for (const row of rows) if (row[index]) counts.set(row[index], (counts.get(row[index]) || 0) + 1);
+    optionCounts[id] = [...counts].sort(([a], [b]) => a.localeCompare(b));
+  }
+  renderOptions();
+  render();
+}).catch(() => {
+  $('resultCount').textContent = 'Could not load observations';
+  $('activeSummary').textContent = 'Check that data.json is available.';
+});

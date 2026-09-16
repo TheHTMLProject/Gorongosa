@@ -1,8 +1,8 @@
 import { createReadStream, mkdirSync, writeFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 
-const source = '/Users/asherheisman/Downloads/wildcam-14sep2026.csv';
-const output = new URL('../dist/data.json', import.meta.url);
+const source = process.argv[2] ?? '/Users/asherheisman/Downloads/wildcam-14sep2026.csv';
+const output = new URL('../data.json', import.meta.url);
 const header = ['image_id', 'camera', 'longitude', 'latitude', 'date', 'month', 'year', 'season', 'time_period', 'veg_type', 'human_structure', 'distance_human_m', 'water_type', 'distance_water_m', 'species', 'species_count', 'percentage_resting', 'percentage_standing', 'percentage_moving', 'percentage_eating', 'percentage_interacting', 'young_present', 'horns', 'image_url'];
 const useful = [0, 1, 2, 3, 4, 7, 8, 9, 14, 15, 23];
 
@@ -30,6 +30,6 @@ for await (const line of rl) {
   const values = parseLine(line);
   if (values.length === header.length) rows.push(useful.map((column) => values[column]));
 }
-mkdirSync(new URL('../dist/', import.meta.url), { recursive: true });
+mkdirSync(new URL('../', import.meta.url), { recursive: true });
 writeFileSync(output, JSON.stringify({ columns: ['id', 'camera', 'lng', 'lat', 'date', 'season', 'time', 'habitat', 'species', 'count', 'image'], rows }));
 console.log(`Wrote ${rows.length.toLocaleString()} records to ${output.pathname}`);

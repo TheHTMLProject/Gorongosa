@@ -4,6 +4,6 @@
   "scripts": {
     "build:data": "node scripts/build-data.mjs",
     "build": "npm run build:data",
-    "check": "node --check dist/app.js && test -f dist/index.html && test -f dist/data.json"
+    "check": "node --check app.js && node --check scripts/build-data.mjs && node --check scripts/extract-reference-assets.mjs && test -f index.html && test -f data.json && test -f assets/map/tile-0-0.jpg && test -f assets/fonts/karla-400.woff2"
   }
 }
